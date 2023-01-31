@@ -1,0 +1,11 @@
+{
+    "emeraldwalk.runonsave": {
+        "commands": [
+            {
+                "match": "./src/.*",
+                "isAsync": true,
+                "cmd": "npm run run ${file}"
+            }
+        ]
+    }
+}

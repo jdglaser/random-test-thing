@@ -1,6 +1,6 @@
 import fs from 'fs'
-import path from 'path'
 import handlebars from 'handlebars'
+import path from 'path'
 
 const sourceDir = './src'
 const outputDir = './output'
@@ -11,22 +11,28 @@ const buildHtml = (html) => {
   return output
 }
 
+async function * walk (dir) {
+  for await (const d of await fs.promises.opendir(dir)) {
+    const entry = path.join(dir, d.name)
+    if (d.isDirectory()) yield * walk(entry)
+    else if (d.isFile()) yield entry
+  }
+}
+
 const walkDir = async (dir) => {
   const allFiles = []
 
   console.log('Walking directories')
-  const walk = async (innerDir) => {
-    const files = await fs.promises.readdir(innerDir)
-    for (const file of files) {
-      const absPath = path.join(innerDir, file)
-      if ((await fs.promises.stat(absPath)).isDirectory()) {
-        return walk(absPath)
-      }
-      allFiles.push(absPath)
+  for await (const file of walk(dir)) {
+    if (path.extname(file) === '.hbs') {
+      console.log('FOUND HBS: ', file)
+      const template = fs.readFileSync(file, 'utf-8')
+      handlebars.registerPartial(file, template)
+    } else {
+      allFiles.push(file)
     }
   }
 
-  await walk(dir)
   return allFiles
 }
 
@@ -53,7 +59,7 @@ const buildAll = async () => {
   }
 }
 
-const build = async () => {
+export const build = async () => {
   const absOutputDir = path.resolve(outputDir)
   if (!fs.existsSync(absOutputDir)) {
     console.log(`Creating output directory ${absOutputDir}`)
@@ -69,5 +75,3 @@ const build = async () => {
     buildAll()
   }
 }
-
-build()

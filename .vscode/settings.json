@@ -4,7 +4,7 @@
             {
                 "match": "./src/.*",
                 "isAsync": true,
-                "cmd": "npm run run ${file}"
+                "cmd": "curl localhost:8000" // "npm run run ${file}"
             }
         ]
     }

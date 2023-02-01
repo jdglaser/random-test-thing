@@ -1,15 +1,12 @@
 import fs from 'fs'
 import Handlebars from 'handlebars'
 import path from 'path'
-import { fileURLToPath } from 'url'
+import {fileURLToPath} from 'url'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-/*
-Function
-
-File: {
+interface File {
   absPath: string
   absDir: string
   relDir: string
@@ -18,23 +15,18 @@ File: {
   ext: string
 }
 
-Partial: {
+interface Partial {
   name: string
   path: string
 }
 
-GetAllFilesResponse: {
+interface GetAllFileResponse {
   templates: File[]
   partials: File[]
   other: File[]
 }
-walkFiles() -> Generator<File>
-getAllFiles() -> [File[], File[]] # non-partials, partials
-getPartialsFromContent(content: string) -> {name: string, path: string}[]
-buildFile(file: File) -> void
-*/
 
-export async function * walkFiles (dirName) {
+export async function * walkFiles (dirName: string): AsyncGenerator<string, void, void> {
   for await (const d of await fs.promises.opendir(dirName)) {
     const entry = path.join(dirName, d.name)
     if (d.isDirectory()) yield * walkFiles(entry)
@@ -42,8 +34,13 @@ export async function * walkFiles (dirName) {
   }
 }
 
-export async function getAllFiles (dirName) {
-  const allFiles = [[], [], []]
+export async function getAllFiles (dirName: string) {
+  const allFiles: GetAllFileResponse = {
+    templates: [] as File[],
+    partials: [] as File[],
+    other: [] as File[]
+  }
+
   for await (const file of walkFiles(dirName)) {
     const absDir = path.dirname(file)
     const relDir = absDir.replace(dirName, '')
@@ -51,35 +48,35 @@ export async function getAllFiles (dirName) {
     const fullName = path.basename(file)
     const baseName = fullName.replace(ext, '')
 
-    const fileObject = {
+    const fileObject: File = {
       absPath: file,
       absDir,
       relDir,
-      fullName,
+      fileName: fullName,
       ext,
       baseName
     }
 
     switch (ext) {
       case '.html':
-        allFiles[0].push(fileObject)
+        allFiles.templates.push(fileObject)
         break
       case '.hbs':
-        allFiles[1].push(fileObject)
+        allFiles.partials.push(fileObject)
         break
       default:
-        allFiles[2].push(fileObject)
+        allFiles.other.push(fileObject)
     }
   }
 
   return allFiles
 }
 
-export async function getPartialsFromContent (content, outputDirName) {
+export async function getPartialsFromContent (content: string, outputDirName: string) {
   const regex = /{{> "?([a-zA-Z\\/0-9-]+)"?.*?}}/g
   const matches = content.matchAll(regex)
 
-  const partials = []
+  const partials: Partial[] = []
   for (const match of matches) {
     const partialName = match[1]
     const pathToPartial = path.join(outputDirName, partialName, '.hbs')
@@ -90,8 +87,8 @@ export async function getPartialsFromContent (content, outputDirName) {
   }
 }
 
-async function writeFileToOutputDir (outputDir, file, content) {
-  const outputFilePath = path.join(outputDir, file.relDir, file.fullName)
+async function writeFileToOutputDir (outputDir: string, file: File, content: string | Buffer) {
+  const outputFilePath = path.join(outputDir, file.relDir, file.fileName)
   const outputDirPath = path.dirname(outputFilePath)
   if (!fs.existsSync(outputDirPath)) {
     await fs.promises.mkdir(outputDirPath)
@@ -99,19 +96,19 @@ async function writeFileToOutputDir (outputDir, file, content) {
   fs.writeFileSync(outputFilePath, content)
 }
 
-async function buildTemplateFile (outputDir, file, hb) {
+async function buildTemplateFile (outputDir: string, file: File, hb: typeof Handlebars) {
   const fileData = await fs.promises.readFile(file.absPath, 'utf-8')
   const template = hb.compile(fileData)
   const content = template(JSON.stringify({ title: file.baseName }))
   writeFileToOutputDir(outputDir, file, content)
 }
 
-export async function buildAllFiles (dirPath) {
+export async function buildAllFiles (dirPath: string) {
   const hb = Handlebars.create()
   const outputDir = path.join(dirPath, 'output')
   const inputDir = path.join(dirPath, 'src')
 
-  const [templates, partials, other] = await getAllFiles(inputDir)
+  const {templates, partials, other} = await getAllFiles(inputDir)
   for (const file of partials) {
     const partialName = `${path.join(file.relDir, file.baseName)}`
     console.log(`Registering partial ${partialName}`)

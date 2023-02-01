@@ -1,7 +1,7 @@
 import fs from 'fs'
 import http from 'http'
 import path from 'path'
-import { build } from './build-utils.js'
+import { buildLocalDir } from './build-utils-two.js'
 
 const host = 'localhost'
 const port = 8000
@@ -10,8 +10,7 @@ const requestListener = function (req, res) {
   res.setHeader('Content-Type', 'application/json')
   res.writeHead(200)
   const data = { message: 'this is a JSON response' }
-  writeTestFile(data)
-  build()
+  buildLocalDir()
   res.end(JSON.stringify(data))
 }
 

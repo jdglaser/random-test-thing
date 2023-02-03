@@ -18,5 +18,6 @@ module.exports = {
     quotes: ['error', 'single'],
     'no-constant-condition': ['error', { 'checkLoops': false }],
     'require-await': 'error',
+    'no-case-declarations': 0
   },
 }

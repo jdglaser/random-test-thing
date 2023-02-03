@@ -8,17 +8,23 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import chokidar from 'chokidar';
+import { lstatSync } from 'fs';
 import path from 'path';
 import { buildAllFiles, buildFile } from './build-utils-two.js';
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-const dirName = '/Users/jarred/Documents/random-test-thing/';
-const srcDir = path.join(dirName, 'src');
-console.log('Building all files in', srcDir);
-buildAllFiles(dirName);
+const dirName = '/Users/gla9931/Documents/test-html/vanilla-js-math/';
+const srcDirName = path.join(dirName, 'src');
+const outputDirName = path.join(dirName, 'output');
+const buildData = {
+    templateFilesByPartial: {}
+};
+buildAllFiles(srcDirName, outputDirName, buildData);
 const queue = [];
-chokidar.watch(srcDir, { ignoreInitial: true }).on('all', (event, path) => {
-    console.log(event, path);
-    queue.push(path);
+chokidar.watch(srcDirName, { ignoreInitial: true }).on('all', (event, eventPath) => {
+    console.log(event, eventPath);
+    if (lstatSync(eventPath).isFile()) {
+        queue.push(eventPath);
+    }
 });
 function watchQueue() {
     return __awaiter(this, void 0, void 0, function* () {
@@ -31,7 +37,7 @@ function watchQueue() {
                 const file = queue.shift();
                 if (file) {
                     console.log('Found something in the queue: ', file);
-                    buildFile(file, dirName);
+                    buildFile(file, srcDirName, outputDirName, buildData);
                     console.log('Done working on queue');
                 }
             }

@@ -10,6 +10,7 @@
     "noImplicitAny": true,
     "esModuleInterop": true,
     "moduleResolution":"NodeNext",
+    "suppressImplicitAnyIndexErrors": true,
   },
   "include": ["lib/**/*.ts"],
   "exclude": [

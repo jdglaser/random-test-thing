@@ -4,7 +4,7 @@ module.exports = {
     es2021: true,
     node: true
   },
-  extends: ['eslint:recommended', 'plugin:@typescript-eslint/recommended'],
+  extends: ['eslint:recommended', 'plugin:@typescript-eslint/recommended', 'eslint:recommended'],
   overrides: [
   ],
   parserOptions: {
@@ -13,5 +13,9 @@ module.exports = {
   },
   parser: '@typescript-eslint/parser',
   plugins: ['@typescript-eslint'],
-  root: true
+  root: true,
+  rules: {
+    quotes: ['error', 'single'],
+    'no-constant-condition': ['error', { 'checkLoops': false }]
+  }
 }

@@ -34,33 +34,53 @@ var __asyncGenerator = (this && this.__asyncGenerator) || function (thisArg, _ar
 import fs from 'fs';
 import Handlebars from 'handlebars';
 import path from 'path';
-import { fileURLToPath } from 'url';
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+function buildFileObj(filePath, dirName) {
+    const absPath = path.resolve(filePath);
+    const absDir = path.dirname(absPath);
+    const relDir = absDir.replace(dirName, '');
+    const ext = path.extname(absPath);
+    const fullName = path.basename(absPath);
+    const baseName = fullName.replace(ext, '');
+    return {
+        absPath,
+        absDir,
+        relDir,
+        fileName: fullName,
+        ext,
+        baseName
+    };
+}
 export function walkFiles(dirName) {
     return __asyncGenerator(this, arguments, function* walkFiles_1() {
-        var e_1, _a;
+        var _a, e_1, _b, _c;
         try {
-            for (var _b = __asyncValues(yield __await(fs.promises.opendir(dirName))), _c; _c = yield __await(_b.next()), !_c.done;) {
-                const d = _c.value;
-                const entry = path.join(dirName, d.name);
-                if (d.isDirectory())
-                    yield __await(yield* __asyncDelegator(__asyncValues(walkFiles(entry))));
-                else if (d.isFile())
-                    yield yield __await(entry);
+            for (var _d = true, _e = __asyncValues(yield __await(fs.promises.opendir(dirName))), _f; _f = yield __await(_e.next()), _a = _f.done, !_a;) {
+                _c = _f.value;
+                _d = false;
+                try {
+                    const d = _c;
+                    const entry = path.join(dirName, d.name);
+                    if (d.isDirectory())
+                        yield __await(yield* __asyncDelegator(__asyncValues(walkFiles(entry))));
+                    else if (d.isFile())
+                        yield yield __await(entry);
+                }
+                finally {
+                    _d = true;
+                }
             }
         }
         catch (e_1_1) { e_1 = { error: e_1_1 }; }
         finally {
             try {
-                if (_c && !_c.done && (_a = _b.return)) yield __await(_a.call(_b));
+                if (!_d && !_a && (_b = _e.return)) yield __await(_b.call(_e));
             }
             finally { if (e_1) throw e_1.error; }
         }
     });
 }
 export function getAllFiles(dirName) {
-    var e_2, _a;
+    var _a, e_2, _b, _c;
     return __awaiter(this, void 0, void 0, function* () {
         const allFiles = {
             templates: [],
@@ -68,37 +88,32 @@ export function getAllFiles(dirName) {
             other: []
         };
         try {
-            for (var _b = __asyncValues(walkFiles(dirName)), _c; _c = yield _b.next(), !_c.done;) {
-                const file = _c.value;
-                const absDir = path.dirname(file);
-                const relDir = absDir.replace(dirName, '');
-                const ext = path.extname(file);
-                const fullName = path.basename(file);
-                const baseName = fullName.replace(ext, '');
-                const fileObject = {
-                    absPath: file,
-                    absDir,
-                    relDir,
-                    fileName: fullName,
-                    ext,
-                    baseName
-                };
-                switch (ext) {
-                    case '.html':
-                        allFiles.templates.push(fileObject);
-                        break;
-                    case '.hbs':
-                        allFiles.partials.push(fileObject);
-                        break;
-                    default:
-                        allFiles.other.push(fileObject);
+            for (var _d = true, _e = __asyncValues(walkFiles(dirName)), _f; _f = yield _e.next(), _a = _f.done, !_a;) {
+                _c = _f.value;
+                _d = false;
+                try {
+                    const file = _c;
+                    const fileObj = buildFileObj(file, dirName);
+                    switch (fileObj.ext) {
+                        case '.html':
+                            allFiles.templates.push(fileObj);
+                            break;
+                        case '.hbs':
+                            allFiles.partials.push(fileObj);
+                            break;
+                        default:
+                            allFiles.other.push(fileObj);
+                    }
+                }
+                finally {
+                    _d = true;
                 }
             }
         }
         catch (e_2_1) { e_2 = { error: e_2_1 }; }
         finally {
             try {
-                if (_c && !_c.done && (_a = _b.return)) yield _a.call(_b);
+                if (!_d && !_a && (_b = _e.return)) yield _b.call(_e);
             }
             finally { if (e_2) throw e_2.error; }
         }
@@ -120,49 +135,63 @@ export function getPartialsFromContent(content, outputDirName) {
         }
     });
 }
-function writeFileToOutputDir(outputDir, file, content) {
+function writeFileToOutputDir(outputDir, file, data) {
     return __awaiter(this, void 0, void 0, function* () {
         const outputFilePath = path.join(outputDir, file.relDir, file.fileName);
         const outputDirPath = path.dirname(outputFilePath);
         if (!fs.existsSync(outputDirPath)) {
             yield fs.promises.mkdir(outputDirPath);
         }
-        fs.writeFileSync(outputFilePath, content);
+        if (!data) {
+            const readData = fs.readFileSync(file.absPath);
+            fs.writeFileSync(outputFilePath, readData);
+            return;
+        }
+        fs.writeFileSync(outputFilePath, data);
     });
 }
-function buildTemplateFile(outputDir, file, hb) {
+function buildTemplateFile(outputDir, file) {
     return __awaiter(this, void 0, void 0, function* () {
         const fileData = yield fs.promises.readFile(file.absPath, 'utf-8');
-        const template = hb.compile(fileData);
-        const content = template(JSON.stringify({ title: file.baseName }));
-        writeFileToOutputDir(outputDir, file, content);
+        const template = Handlebars.compile(fileData);
+        const data = template(JSON.stringify({ title: file.baseName }));
+        writeFileToOutputDir(outputDir, file, data);
+    });
+}
+function registerPartial(file) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const partialName = `${path.join(file.relDir, file.baseName)}`;
+        console.log(`Registering partial ${partialName}`);
+        const content = fs.readFileSync(file.absPath, 'utf-8');
+        Handlebars.registerPartial(partialName, content);
+    });
+}
+export function buildFile(filePath, dirName) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const fileObj = buildFileObj(filePath, dirName);
+        const outputDir = path.join(dirName, 'output');
+        const relPathName = path.join(fileObj.relDir, fileObj.baseName, fileObj.ext);
+        switch (fileObj.ext) {
+            case '.html':
+                console.log('Building template file', relPathName);
+                buildTemplateFile(outputDir, fileObj);
+                break;
+            case '.hbs':
+                console.log('Registering partial', relPathName);
+                registerPartial(fileObj);
+                break;
+            default:
+                console.log('Writing file', relPathName);
+                yield writeFileToOutputDir(outputDir, fileObj);
+        }
     });
 }
 export function buildAllFiles(dirPath) {
     return __awaiter(this, void 0, void 0, function* () {
-        const hb = Handlebars.create();
-        const outputDir = path.join(dirPath, 'output');
         const inputDir = path.join(dirPath, 'src');
         const { templates, partials, other } = yield getAllFiles(inputDir);
-        for (const file of partials) {
-            const partialName = `${path.join(file.relDir, file.baseName)}`;
-            console.log(`Registering partial ${partialName}`);
-            const content = fs.readFileSync(file.absPath, 'utf-8');
-            hb.registerPartial(partialName, content);
+        for (const file of [...templates, ...partials, ...other]) {
+            buildFile(file.absPath, dirPath);
         }
-        for (const file of templates) {
-            console.log(`Building template ${path.join(file.relDir, file.baseName)}`);
-            yield buildTemplateFile(outputDir, file, hb);
-        }
-        for (const file of other) {
-            console.log(`Writing other file ${path.join(file.relDir, file.baseName)}`);
-            const data = fs.readFileSync(file.absPath);
-            yield writeFileToOutputDir(outputDir, file, data);
-        }
-    });
-}
-export function buildLocalDir() {
-    return __awaiter(this, void 0, void 0, function* () {
-        yield buildAllFiles(__dirname);
     });
 }

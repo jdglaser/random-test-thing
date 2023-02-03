@@ -23,9 +23,11 @@ interface GetAllFileResponse {
 }
 
 function buildFileObj(filePath: string, dirName: string): File {
+  console.log('DIR NAME: ', dirName)
   const absPath = path.resolve(filePath)
   const absDir = path.dirname(absPath)
   const relDir = absDir.replace(dirName, '')
+  console.log('REL DIR:', relDir)
   const ext = path.extname(absPath)
   const fullName = path.basename(absPath)
   const baseName = fullName.replace(ext, '')
@@ -49,6 +51,7 @@ export async function* walkFiles(dirName: string): AsyncGenerator<string, void, 
 }
 
 export async function getAllFiles(dirName: string) {
+  console.log('GET ALL FILES DIRNAME:', dirName)
   const allFiles: GetAllFileResponse = {
     templates: [] as File[],
     partials: [] as File[],
@@ -73,7 +76,7 @@ export async function getAllFiles(dirName: string) {
   return allFiles
 }
 
-export async function getPartialsFromContent(content: string, outputDirName: string) {
+export function getPartialsFromContent(content: string, outputDirName: string) {
   const regex = /{{> "?([a-zA-Z\\/0-9-]+)"?.*?}}/g
   const matches = content.matchAll(regex)
 
@@ -90,6 +93,7 @@ export async function getPartialsFromContent(content: string, outputDirName: str
 
 async function writeFileToOutputDir(outputDir: string, file: File, data?: string) {
   const outputFilePath = path.join(outputDir, file.relDir, file.fileName)
+  console.log(outputFilePath)
   const outputDirPath = path.dirname(outputFilePath)
   if (!fs.existsSync(outputDirPath)) {
     await fs.promises.mkdir(outputDirPath)
@@ -111,8 +115,8 @@ async function buildTemplateFile(outputDir: string, file: File) {
   writeFileToOutputDir(outputDir, file, data)
 }
 
-async function registerPartial(file: File) {
-  const partialName = `${path.join(file.relDir, file.baseName)}`
+function registerPartial(file: File) {
+  const partialName = path.join(file.relDir, file.fileName)
   console.log(`Registering partial ${partialName}`)
   const content = fs.readFileSync(file.absPath, 'utf-8')
   Handlebars.registerPartial(partialName, content)
@@ -125,7 +129,7 @@ export async function buildFile(filePath: string, dirName: string) {
   switch (fileObj.ext) {
     case '.html':
       console.log('Building template file', relPathName)
-      buildTemplateFile(outputDir, fileObj)
+      await buildTemplateFile(outputDir, fileObj)
       break
     case '.hbs':
       console.log('Registering partial', relPathName)
@@ -138,6 +142,7 @@ export async function buildFile(filePath: string, dirName: string) {
 }
 
 export async function buildAllFiles(dirPath: string) {
+  console.log('Building all files in dirPath:', dirPath)
   const inputDir = path.join(dirPath, 'src')
 
   const {templates, partials, other} = await getAllFiles(inputDir)

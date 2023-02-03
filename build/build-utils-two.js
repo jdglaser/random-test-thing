@@ -35,9 +35,11 @@ import fs from 'fs';
 import Handlebars from 'handlebars';
 import path from 'path';
 function buildFileObj(filePath, dirName) {
+    console.log('DIR NAME: ', dirName);
     const absPath = path.resolve(filePath);
     const absDir = path.dirname(absPath);
     const relDir = absDir.replace(dirName, '');
+    console.log('REL DIR:', relDir);
     const ext = path.extname(absPath);
     const fullName = path.basename(absPath);
     const baseName = fullName.replace(ext, '');
@@ -82,6 +84,7 @@ export function walkFiles(dirName) {
 export function getAllFiles(dirName) {
     var _a, e_2, _b, _c;
     return __awaiter(this, void 0, void 0, function* () {
+        console.log('GET ALL FILES DIRNAME:', dirName);
         const allFiles = {
             templates: [],
             partials: [],
@@ -121,23 +124,22 @@ export function getAllFiles(dirName) {
     });
 }
 export function getPartialsFromContent(content, outputDirName) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const regex = /{{> "?([a-zA-Z\\/0-9-]+)"?.*?}}/g;
-        const matches = content.matchAll(regex);
-        const partials = [];
-        for (const match of matches) {
-            const partialName = match[1];
-            const pathToPartial = path.join(outputDirName, partialName, '.hbs');
-            partials.push({
-                name: match[1],
-                path: pathToPartial
-            });
-        }
-    });
+    const regex = /{{> "?([a-zA-Z\\/0-9-]+)"?.*?}}/g;
+    const matches = content.matchAll(regex);
+    const partials = [];
+    for (const match of matches) {
+        const partialName = match[1];
+        const pathToPartial = path.join(outputDirName, partialName, '.hbs');
+        partials.push({
+            name: match[1],
+            path: pathToPartial
+        });
+    }
 }
 function writeFileToOutputDir(outputDir, file, data) {
     return __awaiter(this, void 0, void 0, function* () {
         const outputFilePath = path.join(outputDir, file.relDir, file.fileName);
+        console.log(outputFilePath);
         const outputDirPath = path.dirname(outputFilePath);
         if (!fs.existsSync(outputDirPath)) {
             yield fs.promises.mkdir(outputDirPath);
@@ -159,12 +161,10 @@ function buildTemplateFile(outputDir, file) {
     });
 }
 function registerPartial(file) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const partialName = `${path.join(file.relDir, file.baseName)}`;
-        console.log(`Registering partial ${partialName}`);
-        const content = fs.readFileSync(file.absPath, 'utf-8');
-        Handlebars.registerPartial(partialName, content);
-    });
+    const partialName = path.join(file.relDir, file.fileName);
+    console.log(`Registering partial ${partialName}`);
+    const content = fs.readFileSync(file.absPath, 'utf-8');
+    Handlebars.registerPartial(partialName, content);
 }
 export function buildFile(filePath, dirName) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -174,7 +174,7 @@ export function buildFile(filePath, dirName) {
         switch (fileObj.ext) {
             case '.html':
                 console.log('Building template file', relPathName);
-                buildTemplateFile(outputDir, fileObj);
+                yield buildTemplateFile(outputDir, fileObj);
                 break;
             case '.hbs':
                 console.log('Registering partial', relPathName);
@@ -188,6 +188,7 @@ export function buildFile(filePath, dirName) {
 }
 export function buildAllFiles(dirPath) {
     return __awaiter(this, void 0, void 0, function* () {
+        console.log('Building all files in dirPath:', dirPath);
         const inputDir = path.join(dirPath, 'src');
         const { templates, partials, other } = yield getAllFiles(inputDir);
         for (const file of [...templates, ...partials, ...other]) {

@@ -16,6 +16,7 @@ module.exports = {
   root: true,
   rules: {
     quotes: ['error', 'single'],
-    'no-constant-condition': ['error', { 'checkLoops': false }]
-  }
+    'no-constant-condition': ['error', { 'checkLoops': false }],
+    'require-await': 'error',
+  },
 }
